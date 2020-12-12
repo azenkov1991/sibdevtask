@@ -14,6 +14,10 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 
 # Application definition
 
+LOCAL_APPS = [
+    'deals',
+]
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -22,6 +26,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+
+for item in LOCAL_APPS:
+    INSTALLED_APPS += (item, )
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
