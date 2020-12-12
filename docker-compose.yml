@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  deals_backend:
+    build: ./deals_backend
+    command: python manage.py runserver 0.0.0.0:8080
+    volumes:
+      - ./deals_backend:/app
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
