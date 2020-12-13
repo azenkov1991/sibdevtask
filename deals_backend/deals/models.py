@@ -23,7 +23,7 @@ class ItemPrice(models.Model):
         'deals.Item', on_delete=models.CASCADE
     )
     price = models.DecimalField(
-        max_digits=15, decimal_places=2
+        max_digits=28, decimal_places=2
     )
     date_start = models.DateTimeField()
     date_end = models.DateTimeField(

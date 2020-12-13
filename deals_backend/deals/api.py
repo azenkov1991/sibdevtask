@@ -1,7 +1,6 @@
-import decimal
 from pandas import read_csv
 from datetime import datetime
-from utils import pairwise
+from utils import pairwise, validate_price
 
 from rest_framework import generics, status, serializers
 from rest_framework.response import Response
@@ -69,20 +68,14 @@ class CustomerList(generics.GenericAPIView):
                 'Wrong file format. CSV file must have following headers:  customer, item, total, quantity,date'
             )
 
-
         # read and validate csv
-        def decimal_convert(s):
-            try:
-                return decimal.Decimal(s, )
-            except decimal.InvalidOperation:
-                raise ValueError(f'Ivalid price {s}')
         try:
             df = read_csv(
                 file,
                 header=None,
                 names=header,
                 converters={
-                    'total': decimal_convert,
+                    'total': validate_price,
                     'quantity': int,
                     'date': lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f")
                 },
