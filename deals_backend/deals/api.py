@@ -1,10 +1,13 @@
-from pandas import read_csv
 import decimal
+from pandas import read_csv
 from datetime import datetime
+from utils import pairwise
 
 from rest_framework import generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, ParseError
+
+from .models import *
 
 
 class DealsAPIException(Exception):
@@ -58,40 +61,76 @@ class CustomerList(generics.GenericAPIView):
 
         file = ser.validated_data['deals']
 
-        # read and validate csv
-        try:
-            df = read_csv(
-                file,
-                converters={
-                    'total': decimal.Decimal,
-                    'quantity': int,
-                    'date': lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f")
-                },
-
-            )
-        except (ValueError, ValidationError) as e:
-            raise DealsAPIException(f'{e}') from e
-        except decimal.InvalidOperation as e:
-            raise DealsAPIException('Invalid price format') from e
-
-
+        # validate header
         # 5 columns expected with names customer', 'item', 'total', 'quantity', 'date'
-        if not (len(df.columns) == 5 and \
-                all(
-                    map(
-                        lambda x: x in df.columns,
-                        ['customer', 'item', 'total', 'quantity', 'date'],
-                    )
-                )):
+        header = list(map(lambda x: x.strip(),file.readline().decode().split(',')))
+        if header != ['customer', 'item', 'total', 'quantity', 'date']:
             raise DealsAPIException(
                 'Wrong file format. CSV file must have following headers:  customer, item, total, quantity,date'
             )
 
 
-        customers = df['customer'].drop_duplicates()
+        # read and validate csv
+        def decimal_convert(s):
+            try:
+                return decimal.Decimal(s, )
+            except decimal.InvalidOperation:
+                raise ValueError(f'Ivalid price {s}')
+        try:
+            df = read_csv(
+                file,
+                header=None,
+                names=header,
+                converters={
+                    'total': decimal_convert,
+                    'quantity': int,
+                    'date': lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f")
+                },
 
-        items = df['item'].drop_duplicates()
+            )
+        except ValueError as e:
+            raise DealsAPIException(f'{e}') from e
 
+        if not len(df):
+            raise DealsAPIException(
+                'No valid entries found'
+            )
+
+        df.sort_values(['item', 'date'], inplace=True)
+
+        # clear database
+        Customer.objects.all().delete()
+        Item.objects.all().delete()
+
+        for row, next_row in pairwise(df.itertuples()):
+            customer, created = Customer.objects.get_or_create(username=row.customer)
+            item, created = Item.objects.get_or_create(name=row.item)
+
+            # add item_price for item
+            price = row.total / row.quantity
+
+            if int(row.total * 100) % row.quantity !=0:
+                raise DealsAPIException(f'Total price not divisible by quantinty. Row: {row}')
+
+            item_price = ItemPrice(
+                item=item,
+                price=price,
+                date_start=row.date,
+            )
+
+            if next_row:
+                if next_row.item == row.item and next_row.date > row.date:
+                    item_price.date_end = next_row.date
+            item_price.save()
+
+            deal = Deal(
+                customer=customer,
+                item_price=item_price,
+                quantity=row.quantity,
+                date=row.date,
+            )
+
+            deal.save()
 
         return Response(status.HTTP_200_OK)
 

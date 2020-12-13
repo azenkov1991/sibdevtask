@@ -25,14 +25,17 @@ class ItemPrice(models.Model):
     price = models.DecimalField(
         max_digits=15, decimal_places=2
     )
-    time_start = models.DateTimeField()
-    time_end = models.DateTimeField(
+    date_start = models.DateTimeField()
+    date_end = models.DateTimeField(
         null=True, blank=True
     )
 
     def __str__(self):
-        return f'{self.item}: {self.time_start.date()} {self.time_start.time()} - \
-        {self.time_end.date()} {self.time_end.time()}'
+        return f'{self.item}: {self.date_start.date()} {self.price}'
+
+    class Meta:
+        ordering = ['date_start', ]
+
 
 class Deal(models.Model):
     customer = models.ForeignKey(
@@ -42,7 +45,7 @@ class Deal(models.Model):
         'deals.ItemPrice', on_delete=models.CASCADE
     )
     quantity = models.IntegerField()
-    time = models.DateTimeField()
+    date = models.DateTimeField()
 
     def __str__(self):
         return f'{self.customer} {self.item_price.item} {self.quantity} {self.item_price.price}'
