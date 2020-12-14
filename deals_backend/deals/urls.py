@@ -16,7 +16,9 @@ Including another URLconf
 
 from django.urls import path
 from .api import CustomerList
+from django.views.decorators.cache import cache_page
+from django.views.decorators.csrf import csrf_exempt
 
 urlpatterns = [
-    path('', CustomerList.as_view()),
+    path('', csrf_exempt(cache_page(60*60)(CustomerList.as_view()))),
 ]

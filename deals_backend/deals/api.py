@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, ParseError
 
 from django.db.models import F, Sum, Count
+from django.core.cache import cache
 
 from .models import *
 
@@ -21,7 +22,10 @@ def formatted_error_response(method):
             return method(*args, **kwargs)
         except DealsAPIException as e:
             return Response(
-                f'Status: Error, Desc: {e}',
+                {
+                    'Status': 'Error',
+                    'Desc': str(e),
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
     return wrap
@@ -97,6 +101,9 @@ class CustomerList(generics.GenericAPIView):
         Customer.objects.all().delete()
         Item.objects.all().delete()
 
+        # clear cache
+        cache.clear()
+
         for row, next_row in pairwise(df.itertuples()):
             customer, created = Customer.objects.get_or_create(username=row.customer)
             item, created = Item.objects.get_or_create(name=row.item)
@@ -127,10 +134,16 @@ class CustomerList(generics.GenericAPIView):
 
             deal.save()
 
-        return Response(status.HTTP_200_OK)
+        return Response(
+            {
+                'Status': 'OK',
+            },
+            status.HTTP_200_OK
+        )
 
 
     def get(self, request, *args, **kwargs):
+
         top_customers = list(Deal.objects.all().values('customer', 'customer__username').annotate(
                 spent_money=Sum(F('item_price__price')*F('quantity'))
         ).order_by('-spent_money')[:5])
@@ -161,4 +174,5 @@ class CustomerList(generics.GenericAPIView):
 
         customer_serializer.is_valid()
         CustomerList.queryset = top_customers
+
         return Response(customer_serializer.validated_data, status=status.HTTP_200_OK)
