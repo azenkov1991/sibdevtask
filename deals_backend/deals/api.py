@@ -101,9 +101,6 @@ class CustomerList(generics.GenericAPIView):
         Customer.objects.all().delete()
         Item.objects.all().delete()
 
-        # clear cache
-        cache.clear()
-
         for row, next_row in pairwise(df.itertuples()):
             customer, created = Customer.objects.get_or_create(username=row.customer)
             item, created = Item.objects.get_or_create(name=row.item)
