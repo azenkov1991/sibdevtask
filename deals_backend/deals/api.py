@@ -6,6 +6,9 @@ from rest_framework import generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, ParseError
 
+from django.db.models import F, Sum, Count, DecimalField
+
+
 from .models import *
 
 
@@ -30,9 +33,9 @@ class CustomerUpload(serializers.Serializer):
 
 
 class CustomerListEntry(serializers.Serializer):
-    customer = serializers.CharField(max_length=255)
+    username = serializers.CharField(max_length=255)
     spent_money = serializers.DecimalField(
-        max_digits=15, decimal_places=2
+        max_digits=28, decimal_places=2,
     )
     gems = serializers.ListField(
         child=serializers.CharField(max_length=255),
@@ -129,4 +132,34 @@ class CustomerList(generics.GenericAPIView):
 
 
     def get(self, request, *args, **kwargs):
-        return Response("Error oc ", status=400 )
+        top_customers = list(Deal.objects.all().values('customer', 'customer__username').annotate(
+                spent_money=Sum(F('item_price__price')*F('quantity'), output_field=DecimalField())
+        ).order_by('-spent_money')[:5])
+
+        top_customers_ids = [ c['customer'] for c in  top_customers ]
+
+        items_two_top_customers_have = Deal.objects.filter(customer_id__in=top_customers_ids)\
+            .values('item_price__item')\
+            .annotate(customer_count=Count('customer__username', distinct=True))\
+            .filter(customer_count__gt=1)
+
+        items_two_top_customers_have_ids = [i['item_price__item'] for i in items_two_top_customers_have]
+
+        for c in top_customers:
+            c['username'] = c['customer__username']
+            c['gems'] = list(
+                Deal.objects.filter(customer_id = c['customer'])\
+                    .filter(item_price__item__in=items_two_top_customers_have_ids)\
+                    .values_list('item_price__item__name', flat=True)\
+                    .distinct('item_price__item__name')
+            )
+
+        customer_serializer = CustomerListEntry(
+            data = top_customers,
+            many=True,
+
+        )
+
+        customer_serializer.is_valid()
+        CustomerList.queryset = top_customers
+        return Response(customer_serializer.validated_data, status=status.HTTP_200_OK)
