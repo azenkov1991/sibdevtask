@@ -173,6 +173,10 @@ class CustomerList(generics.GenericAPIView):
         )
 
         customer_serializer.is_valid()
-        CustomerList.queryset = top_customers
 
-        return Response(customer_serializer.validated_data, status=status.HTTP_200_OK)
+        return Response(
+            {
+                'response': customer_serializer.validated_data,
+            },
+            status=status.HTTP_200_OK
+        )
