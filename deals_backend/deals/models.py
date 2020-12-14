@@ -22,9 +22,7 @@ class ItemPrice(models.Model):
     item = models.ForeignKey(
         'deals.Item', on_delete=models.CASCADE
     )
-    price = models.DecimalField(
-        max_digits=28, decimal_places=2
-    )
+    price = models.PositiveBigIntegerField()
     date_start = models.DateTimeField()
     date_end = models.DateTimeField(
         null=True, blank=True

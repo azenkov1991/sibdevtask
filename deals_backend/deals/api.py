@@ -1,13 +1,12 @@
 from pandas import read_csv
 from datetime import datetime
-from utils import pairwise, validate_price
+from utils import pairwise, int_validator, str_validator
 
 from rest_framework import generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, ParseError
 
-from django.db.models import F, Sum, Count, DecimalField
-
+from django.db.models import F, Sum, Count
 
 from .models import *
 
@@ -34,9 +33,7 @@ class CustomerUpload(serializers.Serializer):
 
 class CustomerListEntry(serializers.Serializer):
     username = serializers.CharField(max_length=255)
-    spent_money = serializers.DecimalField(
-        max_digits=28, decimal_places=2,
-    )
+    spent_money = serializers.IntegerField()
     gems = serializers.ListField(
         child=serializers.CharField(max_length=255),
         allow_empty=True
@@ -78,8 +75,10 @@ class CustomerList(generics.GenericAPIView):
                 header=None,
                 names=header,
                 converters={
-                    'total': validate_price,
-                    'quantity': int,
+                    'itme': str_validator(max_len=255),
+                    'customer': str_validator(max_len=255),
+                    'total': int_validator(min_value=0, max_value=(1<<63)-1),
+                    'quantity': int_validator(min_value=0, max_value=(1<<31)-1),
                     'date': lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f")
                 },
 
@@ -105,7 +104,7 @@ class CustomerList(generics.GenericAPIView):
             # add item_price for item
             price = row.total / row.quantity
 
-            if int(row.total * 100) % row.quantity !=0:
+            if int(row.total) % row.quantity !=0:
                 raise DealsAPIException(f'Total price not divisible by quantinty. Row: {row}')
 
             item_price = ItemPrice(
@@ -133,7 +132,7 @@ class CustomerList(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         top_customers = list(Deal.objects.all().values('customer', 'customer__username').annotate(
-                spent_money=Sum(F('item_price__price')*F('quantity'), output_field=DecimalField())
+                spent_money=Sum(F('item_price__price')*F('quantity'))
         ).order_by('-spent_money')[:5])
 
         top_customers_ids = [ c['customer'] for c in  top_customers ]
