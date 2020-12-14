@@ -9,7 +9,6 @@ services:
       - POSTGRES_PASSWORD=postgres
   deals_backend:
     build: ./deals_backend
-    command: python manage.py runserver 0.0.0.0:8080
     volumes:
       - ./deals_backend:/app
     ports:
