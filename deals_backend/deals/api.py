@@ -69,7 +69,7 @@ class CustomerList(generics.GenericAPIView):
         header = list(map(lambda x: x.strip(),file.readline().decode().split(',')))
         if header != ['customer', 'item', 'total', 'quantity', 'date']:
             raise DealsAPIException(
-                'Wrong file format. CSV file must have following headers:  customer, item, total, quantity,date'
+                'Wrong file format. CSV file must have following headers in first line:  customer, item, total, quantity,date'
             )
 
         # read and validate csv
@@ -79,8 +79,8 @@ class CustomerList(generics.GenericAPIView):
                 header=None,
                 names=header,
                 converters={
-                    'itme': str_validator(max_len=255),
-                    'customer': str_validator(max_len=255),
+                    'item': str_validator(max_len=255, not_empty=True),
+                    'customer': str_validator(max_len=255, not_empty=True),
                     'total': int_validator(min_value=0, max_value=(1<<63)-1),
                     'quantity': int_validator(min_value=0, max_value=(1<<31)-1),
                     'date': lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S.%f")

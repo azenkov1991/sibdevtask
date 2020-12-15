@@ -29,8 +29,10 @@ def int_validator(min_value=None, max_value=None):
 
     return validator
 
-def str_validator(max_len=None):
+def str_validator(max_len=None, not_empty=None):
     def validator(s):
+        if not_empty and not len(s):
+            raise ValueError(f'Empty string')
         if max_len and len(s)>max_len:
             raise ValueError(f'String too big {s}')
         return s
