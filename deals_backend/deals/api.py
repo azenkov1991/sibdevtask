@@ -101,6 +101,9 @@ class CustomerList(generics.GenericAPIView):
         Customer.objects.all().delete()
         Item.objects.all().delete()
 
+        # clear cache
+        cache.delete('customer_list')
+
         for row, next_row in pairwise(df.itertuples()):
             customer, created = Customer.objects.get_or_create(username=row.customer)
             item, created = Item.objects.get_or_create(name=row.item)
@@ -141,6 +144,15 @@ class CustomerList(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
 
+        cached_data = cache.get('customer_list')
+        if cached_data:
+            return Response(
+                {
+                    'response': cached_data,
+                },
+                status=status.HTTP_200_OK
+            )
+
         top_customers = list(Deal.objects.all().values('customer', 'customer__username').annotate(
                 spent_money=Sum(F('item_price__price')*F('quantity'))
         ).order_by('-spent_money')[:5])
@@ -170,6 +182,9 @@ class CustomerList(generics.GenericAPIView):
         )
 
         customer_serializer.is_valid()
+
+        # put data into the cache
+        cache.set('customer_list', customer_serializer.validated_data)
 
         return Response(
             {

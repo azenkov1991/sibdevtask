@@ -17,3 +17,5 @@ services:
       - ./.env.dev
     depends_on:
       - db
+  redis:
+    image: redis

@@ -15,9 +15,10 @@ Including another URLconf
 """
 
 from django.urls import path
-from .api import CustomerList
 from django.views.decorators.csrf import csrf_exempt
+from .api import CustomerList
+
 
 urlpatterns = [
-    path('', csrf_exempt(CustomerList.as_view())),
+    path('',csrf_exempt(CustomerList.as_view())),
 ]
